@@ -2,12 +2,12 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import joblib
 import pandas as pd
-from pathlib import Path  # <-- for relative paths
+from pathlib import Path  # for relative paths
 
 app = FastAPI(title="House Price Prediction API")
 
 # Load the saved model using a path relative to this file
-model_path = Path(__file__).parent / "house_price_pipeline.pkl"
+model_path = Path(__file__).parent / "house_price_model.pkl"  # <-- use correct file name
 model = joblib.load(model_path)
 
 class HouseData(BaseModel):
