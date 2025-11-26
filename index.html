@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>House Price Prediction</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+
+  <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+    <h1 class="text-2xl font-bold text-center mb-6 text-blue-600">🏠 House Price Prediction</h1>
+
+    <form id="predictionForm" class="space-y-4">
+      <div>
+        <label class="block font-medium">Longitude</label>
+        <input type="number" step="any" name="longitude" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+      </div>
+      <div>
+        <label class="block font-medium">Latitude</label>
+        <input type="number" step="any" name="latitude" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+      </div>
+      <div>
+        <label class="block font-medium">Housing Median Age</label>
+        <input type="number" name="housing_median_age" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+      </div>
+      <div>
+        <label class="block font-medium">Total Rooms</label>
+        <input type="number" name="total_rooms" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+      </div>
+      <div>
+        <label class="block font-medium">Total Bedrooms</label>
+        <input type="number" name="total_bedrooms" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+      </div>
+      <div>
+        <label class="block font-medium">Population</label>
+        <input type="number" name="population" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+      </div>
+      <div>
+        <label class="block font-medium">Households</label>
+        <input type="number" name="households" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+      </div>
+      <div>
+        <label class="block font-medium">Median Income</label>
+        <input type="number" step="any" name="median_income" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+      </div>
+      <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors">Predict Price</button>
+    </form>
+
+    <div id="result" class="mt-6 text-center text-xl font-bold text-green-600"></div>
+  </div>
+
+  <script>
+    const form = document.getElementById('predictionForm');
+    const result = document.getElementById('result');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const formData = new FormData(form);
+      const data = Object.fromEntries(formData.entries());
+
+      // Convert numeric fields
+      for (let key in data) {
+        data[key] = parseFloat(data[key]);
+      }
+
+      try {
+        const response = await fetch('https://house-prices-7esi.onrender.com/predict', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        });
+
+        const resultData = await response.json();
+        result.textContent = "Predicted House Value: $" + resultData.predicted_house_value.toFixed(2);
+
+      } catch (err) {
+        result.textContent = "Error: " + err.message;
+      }
+    });
+  </script>
+
+</body>
+</html>
