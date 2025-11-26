@@ -2,11 +2,13 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import joblib
 import pandas as pd
+from pathlib import Path  # <-- for relative paths
 
 app = FastAPI(title="House Price Prediction API")
 
-# Load the saved pipeline
-model = joblib.load("house_price_pipeline.pkl")
+# Load the saved model using a path relative to this file
+model_path = Path(__file__).parent / "house_price_pipeline.pkl"
+model = joblib.load(model_path)
 
 class HouseData(BaseModel):
     longitude: float
@@ -20,7 +22,9 @@ class HouseData(BaseModel):
 
 @app.post("/predict")
 def predict_price(data: HouseData):
+    # Convert input to DataFrame
     input_df = pd.DataFrame([data.dict()])
+    # Make prediction
     prediction = model.predict(input_df)
     return {"predicted_house_value": float(prediction[0])}
 
