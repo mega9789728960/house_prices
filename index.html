@@ -5,83 +5,778 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>House Price Prediction</title>
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    #map {
+      height: 280px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      border: 2px solid #e5e7eb;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .input-field {
+      position: relative;
+    }
+
+    .input-field input {
+      transition: all 0.3s ease;
+      border: 2px solid #e5e7eb;
+    }
+
+    .input-field input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .input-field input::placeholder {
+      color: #d1d5db;
+    }
+
+    .submit-btn {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .submit-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);
+    }
+
+    .submit-btn:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 8px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .result-card {
+      animation: slideIn 0.4s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .error-state {
+      border-color: #ef4444 !important;
+    }
+
+    .success-state {
+      border-color: #10b981 !important;
+    }
+
+    .form-section {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    @media (max-width: 640px) {
+      .form-section {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .icon-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    .modal-overlay.hidden {
+      display: none;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 420px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.3s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateY(20px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .modal-header {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .modal-icon {
+      font-size: 28px;
+      flex-shrink: 0;
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: bold;
+      color: #374151;
+    }
+
+    .modal-message {
+      color: #6b7280;
+      line-height: 1.6;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    .modal-btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 14px;
+    }
+
+    .modal-btn-secondary {
+      background-color: #e5e7eb;
+      color: #374151;
+    }
+
+    .modal-btn-secondary:hover {
+      background-color: #d1d5db;
+    }
+
+    .modal-btn-primary {
+      background-color: #3b82f6;
+      color: white;
+    }
+
+    .modal-btn-primary:hover {
+      background-color: #2563eb;
+    }
+
+    .info-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background-color: #dbeafe;
+      color: #1e40af;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .info-icon:hover {
+      background-color: #bfdbfe;
+      transform: scale(1.1);
+    }
+
+    .tooltip {
+      position: relative;
+      display: inline-block;
+    }
+
+    .tooltip-text {
+      visibility: hidden;
+      width: 280px;
+      background-color: #1f2937;
+      color: #f3f4f6;
+      text-align: left;
+      border-radius: 8px;
+      padding: 12px;
+      position: absolute;
+      z-index: 1000;
+      bottom: 125%;
+      left: 50%;
+      margin-left: -140px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      font-size: 12px;
+      line-height: 1.5;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .tooltip-text::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      margin-left: -5px;
+      border-width: 5px;
+      border-style: solid;
+      border-color: #1f2937 transparent transparent transparent;
+    }
+
+    .tooltip:hover .tooltip-text {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    @media (max-width: 640px) {
+      .tooltip-text {
+        width: 220px;
+        margin-left: -110px;
+        font-size: 11px;
+      }
+    }
+  </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center">
 
-  <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
-    <h1 class="text-2xl font-bold text-center mb-6 text-blue-600">🏠 House Price Prediction</h1>
+<body class="bg-gradient-to-br from-blue-50 via-slate-50 to-blue-50 min-h-screen py-8 px-4">
 
-    <form id="predictionForm" class="space-y-4">
-      <div>
-        <label class="block font-medium">Longitude</label>
-        <input type="number" step="any" name="longitude" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
-      </div>
-      <div>
-        <label class="block font-medium">Latitude</label>
-        <input type="number" step="any" name="latitude" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
-      </div>
-      <div>
-        <label class="block font-medium">Housing Median Age</label>
-        <input type="number" name="housing_median_age" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
-      </div>
-      <div>
-        <label class="block font-medium">Total Rooms</label>
-        <input type="number" name="total_rooms" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
-      </div>
-      <div>
-        <label class="block font-medium">Total Bedrooms</label>
-        <input type="number" name="total_bedrooms" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
-      </div>
-      <div>
-        <label class="block font-medium">Population</label>
-        <input type="number" name="population" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
-      </div>
-      <div>
-        <label class="block font-medium">Households</label>
-        <input type="number" name="households" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
-      </div>
-      <div>
-        <label class="block font-medium">Median Income</label>
-        <input type="number" step="any" name="median_income" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
-      </div>
-      <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors">Predict Price</button>
-    </form>
-
-    <div id="result" class="mt-6 text-center text-xl font-bold text-green-600"></div>
+<div class="max-w-2xl mx-auto">
+  <!-- Header -->
+  <div class="text-center mb-8">
+    <h1 class="text-4xl font-bold text-gray-900 mb-2">🏠 House Price Prediction</h1>
+    <p class="text-gray-600">Get instant property valuations with advanced ML models</p>
   </div>
 
-  <script>
-    const form = document.getElementById('predictionForm');
-    const result = document.getElementById('result');
+  <!-- Main Card -->
+  <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
+    <div class="p-8">
+      
+      <!-- Location Section -->
+      <div class="mb-8">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">📍</span>
+            <h2 class="text-lg font-bold text-gray-900">Select Location</h2>
+          </div>
+          <button type="button" id="getLocationBtn" 
+                  class="flex items-center gap-2 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg font-medium hover:bg-blue-200 transition text-sm">
+            <span>📌</span>
+            <span>My Location</span>
+          </button>
+        </div>
+        <p class="text-sm text-gray-600 mb-4">Click on the map to pin your property location or use "My Location" button</p>
+        
+        <div id="map" class="w-full"></div>
+      </div>
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
+      <!-- Form -->
+      <form id="predictionForm">
+        
+        <!-- Coordinates Section -->
+        <div class="mb-8 pb-8 border-b border-gray-200">
+          <h3 class="flex items-center gap-2 font-semibold text-gray-900 mb-4">
+            <span class="text-lg">🌐</span> Coordinates
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="input-field">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Longitude</label>
+              <input id="longitude" type="number" step="any" name="longitude" placeholder="e.g., 78.96" required
+                     class="w-full px-4 py-3 rounded-lg">
+            </div>
+            <div class="input-field">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Latitude</label>
+              <input id="latitude" type="number" step="any" name="latitude" placeholder="e.g., 20.59" required
+                     class="w-full px-4 py-3 rounded-lg">
+            </div>
+          </div>
+        </div>
 
-      const formData = new FormData(form);
-      const data = Object.fromEntries(formData.entries());
+        <!-- Property Section -->
+        <div class="mb-8 pb-8 border-b border-gray-200">
+          <h3 class="flex items-center gap-2 font-semibold text-gray-900 mb-4">
+            <span class="text-lg">🏘️</span> Property Details
+          </h3>
+          <div class="form-section">
+            <div class="input-field">
+              <div class="flex items-center gap-2 mb-2">
+                <label class="block text-sm font-medium text-gray-700">Housing Median Age</label>
+                <div class="tooltip">
+                  <div class="info-icon">?</div>
+                  <div class="tooltip-text">
+                    The median age of buildings in the area (in years). Half of houses are older, half are newer. 
+                    <br><br>
+                    <strong>Why it matters:</strong> Older housing may need more maintenance. Newer housing indicates recent development.
+                    <br><br>
+                    <strong>Example:</strong> Age = 40 means half the buildings are older than 40 years.
+                  </div>
+                </div>
+              </div>
+              <input type="number" name="housing_median_age" placeholder="e.g., 20" required 
+                     class="w-full px-4 py-3 rounded-lg">
+            </div>
+            <div class="input-field">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Total Rooms</label>
+              <input type="number" name="total_rooms" placeholder="e.g., 2500" required 
+                     class="w-full px-4 py-3 rounded-lg">
+            </div>
+            <div class="input-field">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Total Bedrooms</label>
+              <input type="number" name="total_bedrooms" placeholder="e.g., 5" required 
+                     class="w-full px-4 py-3 rounded-lg">
+            </div>
+          </div>
+        </div>
 
-      // Convert numeric fields
-      for (let key in data) {
-        data[key] = parseFloat(data[key]);
+        <!-- Demographics Section -->
+        <div class="mb-8">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="flex items-center gap-2 font-semibold text-gray-900">
+              <span class="text-lg">👥</span> Area Demographics
+            </h3>
+            <button type="button" id="fetchDemoBtn" 
+                    class="flex items-center gap-2 px-3 py-2 bg-green-100 text-green-700 rounded-lg font-medium hover:bg-green-200 transition text-sm">
+              <span>🌍</span>
+              <span>Auto-Fill</span>
+            </button>
+          </div>
+
+          <!-- Country Code Input -->
+          <div class="mb-4">
+            <div class="input-field">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Country Code</label>
+              <div class="flex gap-2">
+                <input type="text" id="countryCode" placeholder="e.g., US, IN, GB" maxlength="2"
+                       class="w-full px-4 py-3 rounded-lg uppercase">
+              </div>
+              <p class="text-xs text-gray-500 mt-1">Enter ISO country code to fetch demographics from World Bank</p>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="input-field">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Population</label>
+              <input type="number" name="population" placeholder="e.g., 1500" required 
+                     class="w-full px-4 py-3 rounded-lg">
+            </div>
+            <div class="input-field">
+              <div class="flex items-center gap-2 mb-2">
+                <label class="block text-sm font-medium text-gray-700">Households</label>
+                <div class="tooltip">
+                  <div class="info-icon">?</div>
+                  <div class="tooltip-text">
+                    The total number of homes or family units in the area. Each household represents one dwelling unit.
+                    <br><br>
+                    <strong>How to calculate:</strong> Households = Population ÷ Average Household Size
+                    <br><br>
+                    <strong>Example:</strong> If population is 150,000 and average family size is 3.5, then households = 150,000 ÷ 3.5 = ~42,857 homes
+                    <br><br>
+                    <strong>Tip:</strong> Use the "Auto-Fill" button above to fetch this data automatically from World Bank statistics.
+                  </div>
+                </div>
+              </div>
+              <input type="number" name="households" placeholder="e.g., 500" required 
+                     class="w-full px-4 py-3 rounded-lg">
+            </div>
+            <div class="input-field">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Median Income</label>
+              <input type="number" step="any" name="median_income" placeholder="e.g., 5.5" required 
+                     class="w-full px-4 py-3 rounded-lg">
+            </div>
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <button type="submit" id="submitBtn"
+                class="submit-btn w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold text-lg hover:bg-blue-700 transition flex items-center justify-center gap-2">
+          <span id="btnText">Predict Price</span>
+        </button>
+      </form>
+
+      <!-- Result Section -->
+      <div id="resultContainer" class="mt-8 hidden">
+        <div id="result" class="result-card bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-6 text-center">
+          <p class="text-sm font-medium text-green-700 mb-2">Predicted House Value</p>
+          <p id="resultValue" class="text-4xl font-bold text-green-600 mb-2">$0</p>
+          <p class="text-xs text-green-600">Based on provided property details</p>
+        </div>
+      </div>
+
+      <!-- Error Section -->
+      <div id="errorContainer" class="mt-8 hidden">
+        <div class="bg-gradient-to-br from-red-50 to-rose-50 border-2 border-red-200 rounded-xl p-6">
+          <p class="flex items-center gap-2 text-red-700 font-medium">
+            <span>⚠️</span>
+            <span id="errorText">An error occurred</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Negative Prediction Warning Section -->
+      <div id="negativeContainer" class="mt-8 hidden">
+        <div class="bg-gradient-to-br from-yellow-50 to-amber-50 border-2 border-yellow-300 rounded-xl p-6">
+          <div class="flex items-start gap-3 mb-4">
+            <span class="text-2xl flex-shrink-0">⚠️</span>
+            <div>
+              <p class="font-semibold text-yellow-900 mb-2">Negative Prediction Detected</p>
+              <p class="text-sm text-yellow-800 mb-3">The model predicted a negative house value, which indicates your input data is unrealistic or inconsistent.</p>
+            </div>
+          </div>
+          
+          <div class="bg-white bg-opacity-70 rounded-lg p-4 mb-4">
+            <p class="font-medium text-yellow-900 mb-2">❌ Common Issues:</p>
+            <ul class="text-sm text-yellow-800 space-y-2 ml-4">
+              <li><strong>Mismatched scales:</strong> Using country-wide population (billions) instead of local area population</li>
+              <li><strong>Unrealistic property size:</strong> Too few rooms/bedrooms compared to area population</li>
+              <li><strong>Inconsistent income:</strong> Very low median income relative to other features</li>
+              <li><strong>Wrong data scope:</strong> Mixing country-level data with neighborhood-level property details</li>
+            </ul>
+          </div>
+
+          <div class="bg-white bg-opacity-70 rounded-lg p-4">
+            <p class="font-medium text-yellow-900 mb-2">✅ How to Fix:</p>
+            <ul class="text-sm text-yellow-800 space-y-2 ml-4">
+              <li><strong>Use local area data:</strong> Population of your neighborhood/city block, not entire country</li>
+              <li><strong>Households:</strong> Count homes in your specific area (Population ÷ Average Household Size)</li>
+              <li><strong>Median Income:</strong> Use area-specific income, not national average</li>
+              <li><strong>Keep data consistent:</strong> All fields should represent the same geographic area</li>
+              <li><strong>Use realistic values:</strong> ML models work best on data similar to training data</li>
+              <li><strong>Use Auto-Fill:</strong> Click the "Auto-Fill" button to fetch World Bank statistics (for broader estimates)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="bg-gray-50 px-8 py-4 border-t border-gray-200">
+      <p class="text-xs text-gray-600 text-center">Powered by Machine Learning • Data Privacy Secured</p>
+    </div>
+  </div>
+</div>
+
+<!-- GPS Warning Modal -->
+<div id="gpsWarningModal" class="modal-overlay hidden">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-icon">⚠️</div>
+      <div class="modal-title">GPS Accuracy Notice</div>
+    </div>
+    <p class="modal-message">
+      You appear to be on a desktop/laptop. GPS location may be inaccurate or unavailable. For best results, use a mobile device with GPS enabled or manually click on the map to select your property location.
+    </p>
+    <div class="modal-actions">
+      <button type="button" id="closeWarningModal" class="modal-btn modal-btn-secondary">
+        Got it
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const map = L.map('map').setView([20.5937, 78.9629], 5);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: "© OpenStreetMap"
+  }).addTo(map);
+
+  let marker;
+
+  async function getCountryCodeFromCoordinates(lat, lng) {
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+      const data = await response.json();
+      
+      if (data.address && data.address.country_code) {
+        return data.address.country_code.toUpperCase();
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching country code:', error);
+      return null;
+    }
+  }
+
+  async function updateLocation(lat, lng) {
+    const latVal = parseFloat(lat).toFixed(6);
+    const lngVal = parseFloat(lng).toFixed(6);
+
+    document.getElementById('latitude').value = latVal;
+    document.getElementById('longitude').value = lngVal;
+
+    const latlng = L.latLng(latVal, lngVal);
+    
+    if (marker) {
+      marker.setLatLng(latlng);
+    } else {
+      marker = L.marker(latlng).addTo(map);
+    }
+
+    map.setView(latlng, 13);
+
+    const countryCode = await getCountryCodeFromCoordinates(lat, lng);
+    if (countryCode) {
+      document.getElementById('countryCode').value = countryCode;
+    }
+  }
+
+  map.on('click', function (e) {
+    updateLocation(e.latlng.lat, e.latlng.lng);
+  });
+
+  function isDesktopDevice() {
+    return !(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+             (navigator.maxTouchPoints && navigator.maxTouchPoints > 2));
+  }
+
+  const gpsWarningModal = document.getElementById('gpsWarningModal');
+  const closeWarningModal = document.getElementById('closeWarningModal');
+
+  closeWarningModal.addEventListener('click', function() {
+    gpsWarningModal.classList.add('hidden');
+  });
+
+  gpsWarningModal.addEventListener('click', function(e) {
+    if (e.target === gpsWarningModal) {
+      gpsWarningModal.classList.add('hidden');
+    }
+  });
+
+  const getLocationBtn = document.getElementById('getLocationBtn');
+  getLocationBtn.addEventListener('click', function() {
+    getLocationBtn.disabled = true;
+    const originalText = getLocationBtn.innerHTML;
+    getLocationBtn.innerHTML = '<span class="spinner" style="width: 14px; height: 14px; border-width: 2px; margin-right: 6px;"></span><span>Getting...</span>';
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        function(position) {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          updateLocation(lat, lng);
+          
+          if (isDesktopDevice()) {
+            gpsWarningModal.classList.remove('hidden');
+          }
+          
+          getLocationBtn.disabled = false;
+          getLocationBtn.innerHTML = originalText;
+        },
+        function(error) {
+          let errorMsg = 'Unable to get location';
+          if (error.code === error.PERMISSION_DENIED) {
+            errorMsg = 'Location access denied';
+          } else if (error.code === error.POSITION_UNAVAILABLE) {
+            errorMsg = 'Location unavailable';
+          } else if (error.code === error.TIMEOUT) {
+            errorMsg = 'Location request timeout';
+          }
+          alert(errorMsg);
+          getLocationBtn.disabled = false;
+          getLocationBtn.innerHTML = originalText;
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    } else {
+      alert('Geolocation is not supported by your browser');
+      getLocationBtn.disabled = false;
+      getLocationBtn.innerHTML = originalText;
+    }
+  });
+
+  async function fetchDemographics() {
+    const countryCode = document.getElementById('countryCode').value.toUpperCase().trim();
+    const fetchDemoBtn = document.getElementById('fetchDemoBtn');
+    
+    if (!countryCode) {
+      alert('Please enter a country code (e.g., US, IN, GB)');
+      return;
+    }
+
+    const originalText = fetchDemoBtn.innerHTML;
+    fetchDemoBtn.disabled = true;
+    fetchDemoBtn.innerHTML = '<span class="spinner" style="width: 12px; height: 12px; border-width: 2px; margin-right: 6px;"></span><span>Fetching...</span>';
+
+    try {
+      // Population
+      const popRes = await fetch(`https://api.worldbank.org/v2/country/${countryCode}/indicator/SP.POP.TOTL?format=json`);
+      const popData = await popRes.json();
+      const population = popData[1]?.[0]?.value || null;
+
+      // Average Household Size
+      const ahsRes = await fetch(`https://api.worldbank.org/v2/country/${countryCode}/indicator/SP.HOU.SIZR?format=json`);
+      const ahsData = await ahsRes.json();
+      const avgHouseholdSize = ahsData[1]?.[0]?.value || null;
+
+      // Estimated Households
+      let households = null;
+      if (population && avgHouseholdSize) {
+        households = Math.round(population / avgHouseholdSize);
       }
 
-      try {
-        const response = await fetch('https://house-prices-7esi.onrender.com/predict', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(data)
+      // Median Income (GNI per capita as approximation)
+      const incomeRes = await fetch(`https://api.worldbank.org/v2/country/${countryCode}/indicator/NY.GNP.PCAP.CD?format=json`);
+      const incomeData = await incomeRes.json();
+      const medianIncome = incomeData[1]?.[0]?.value || null;
+
+      // Check if we got any data
+      if (!population && !households && !medianIncome) {
+        alert('No demographic data found for country code: ' + countryCode);
+        fetchDemoBtn.disabled = false;
+        fetchDemoBtn.innerHTML = originalText;
+        return;
+      }
+
+      // Populate the form fields
+      if (population) {
+        document.querySelector('input[name="population"]').value = Math.round(population);
+      }
+      if (households) {
+        document.querySelector('input[name="households"]').value = households;
+      }
+      if (medianIncome) {
+        document.querySelector('input[name="median_income"]').value = Math.round(medianIncome * 100) / 100;
+      }
+
+      alert('Demographics auto-filled successfully!');
+      fetchDemoBtn.disabled = false;
+      fetchDemoBtn.innerHTML = originalText;
+
+    } catch (error) {
+      console.error('Error fetching demographics:', error);
+      alert('Error fetching demographic data. Please check the country code and try again.');
+      fetchDemoBtn.disabled = false;
+      fetchDemoBtn.innerHTML = originalText;
+    }
+  }
+
+  const fetchDemoBtn = document.getElementById('fetchDemoBtn');
+  fetchDemoBtn.addEventListener('click', fetchDemographics);
+
+  const form = document.getElementById('predictionForm');
+  const submitBtn = document.getElementById('submitBtn');
+  const btnText = document.getElementById('btnText');
+  const resultContainer = document.getElementById('resultContainer');
+  const errorContainer = document.getElementById('errorContainer');
+  const negativeContainer = document.getElementById('negativeContainer');
+  const resultValue = document.getElementById('resultValue');
+  const errorText = document.getElementById('errorText');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    resultContainer.classList.add('hidden');
+    errorContainer.classList.add('hidden');
+    negativeContainer.classList.add('hidden');
+    submitBtn.disabled = true;
+
+    btnText.innerHTML = '<span class="spinner"></span>Predicting...';
+
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+
+    for (let key in data) {
+      data[key] = parseFloat(data[key]);
+    }
+
+    try {
+      const response = await fetch('https://house-prices-7esi.onrender.com/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get prediction');
+      }
+
+      const resultData = await response.json();
+      const price = resultData.predicted_house_value;
+      
+      if (price < 0) {
+        negativeContainer.classList.remove('hidden');
+        resultContainer.classList.add('hidden');
+        errorContainer.classList.add('hidden');
+      } else {
+        resultValue.textContent = '$' + parseFloat(price).toFixed(2).toLocaleString('en-US', { 
+          minimumFractionDigits: 2, 
+          maximumFractionDigits: 2 
         });
-
-        const resultData = await response.json();
-        result.textContent = "Predicted House Value: $" + resultData.predicted_house_value.toFixed(2);
-
-      } catch (err) {
-        result.textContent = "Error: " + err.message;
+        
+        resultContainer.classList.remove('hidden');
+        errorContainer.classList.add('hidden');
+        negativeContainer.classList.add('hidden');
       }
-    });
-  </script>
+
+    } catch (err) {
+      errorText.textContent = err.message || 'Unable to fetch prediction. Please try again.';
+      errorContainer.classList.remove('hidden');
+      resultContainer.classList.add('hidden');
+      negativeContainer.classList.add('hidden');
+    } finally {
+      submitBtn.disabled = false;
+      btnText.innerHTML = 'Predict Price';
+    }
+  });
+</script>
 
 </body>
 </html>
